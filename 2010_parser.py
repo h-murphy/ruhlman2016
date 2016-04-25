@@ -6,6 +6,7 @@ import docx
 from docx import Document
 import os
 import csv
+import pandas as pd
 
 
 #all the files
@@ -70,33 +71,51 @@ def ad_major(ad):
     return major_return
 
 def p_mjr_and_yr(p):
-    presenters = p.split(", ")
-    split = p.split(u'\u2019')
+    #init
+    students = []
     years = []
-    for i,s in enumerate(split):
-        if i%2 == 1 and s[0] == u'1':
-            years.append('20'+s[:2])
-            if years[-1] == '20Co':
-                print p
-    years = ', '.join(years)
-    majors = ', '.join([x for x in presenters if x.find(u'\u2019') == -1])
-#     years = [u'20'+x[x.find(u'\u2019')+1:] for x in presenters if x.find(u'\u2019') != -1]
-    students = [x[:x.find(u'\u2019')-1] for x in presenters if x.find(u'\u2019') != -1]
-    if len(students) > 1:
-        if "and" in students[-1]:
-            students[-1] = students[-1].split("and ")[1]
+    majors = []
+    
+    presenters = p.split(",")
+    i = 0
+    while i < len(presenters):
+        split = presenters[i].split(u'\u2019')
+
+        #student - count for "and"
+        if "and" in split[0]:
+            students.append(split[0].split("and")[1].strip())
+        else:
+            students.append(split[0].strip())
+
+        #years
+        years.append(u'20'+split[1].strip())
+        i += 1 #increment
+
+        #majors - account for undeclared
+        if i < len(presenters): #2nd to last elt in lst or earlier
+            if u'\u2019' in presenters[i]:#if next is presenter, not major
+                majors.append("Unspecified")
+            else:
+                majors.append(presenters[i].strip())
+                i += 1
+        else:
+            majors.append("Unspecified")
+        
+    students = u', '.join(students)
+    majors = u', '.join(majors)
+    years = u', '.join(years)
     return students, majors, years
 
 #init
 projects = [] #dict of each project
 titles = []
+
 for i,s in enumerate(sesh):
     inds = sesh_inds[i]
     for j,p in enumerate(inds):
         titles.append(s[p-2])
         title = s[p-2].strip()
         if title == "/":
-            print
             title = sesh[i][0].split(" (")[0]
         students = s[p-1].strip()
         s_info = p_mjr_and_yr(students)
@@ -105,7 +124,7 @@ for i,s in enumerate(sesh):
         projects.append({"Title": title, \
                          "Advisor_Major": major,\
                          "Advisor": advisor, \
-                         "Students": students,\
+                         "Students": s_info[0],\
                          "Student_Major": s_info[1], \
                          "Student_Year": s_info[2], \
                          "Year": u'2010'
@@ -126,7 +145,5 @@ all_projects = {}
 for k, v in enumerate(projects):
     all_projects[k] = v
     
-projects = pd.DataFrame(all_projects)
-projects = projects.T
-
-projects.to_csv("cleaned_2010.csv", encoding='utf-8')
+projects = pd.DataFrame(all_projects).T
+projects.to_csv("2010.csv", encoding='utf-8')
